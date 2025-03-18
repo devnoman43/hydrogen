@@ -10,7 +10,8 @@ export function ProductImage({
     return <div className="product-image" />;
   }
   return (
-    <div className="product-image">
+    <div className="product-image ">
+    
       <Image
         alt={image.altText || 'Product Image'}
         aspectRatio="1/1"

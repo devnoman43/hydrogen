@@ -1,55 +1,89 @@
-import {type LoaderFunctionArgs} from '@shopify/remix-oxygen';
-import {Await, useLoaderData, Link, type MetaFunction} from '@remix-run/react';
-import {Suspense} from 'react';
-import {Image, Money} from '@shopify/hydrogen';
+import { type LoaderFunctionArgs } from '@shopify/remix-oxygen';
+import { Await, useLoaderData, Link, type MetaFunction } from '@remix-run/react';
+import { Suspense, useState, useEffect } from 'react';
+import { Image, Money } from '@shopify/hydrogen';
 import type {
   FeaturedCollectionFragment,
   RecommendedProductsQuery,
 } from 'storefrontapi.generated';
 
-export const meta: MetaFunction = () => {
-  return [{title: 'Hydrogen | Home'}];
+// Define the MoneyV2 type
+type MoneyV2 = {
+  amount: string;
+  currencyCode: string;
 };
 
-export async function loader(args: LoaderFunctionArgs) {
-  // Start fetching non-critical data without blocking time to first byte
-  const deferredData = loadDeferredData(args);
+// Define the PriceRange type
+type PriceRange = {
+  minVariantPrice: MoneyV2;
+  maxVariantPrice: MoneyV2;
+};
 
-  // Await the critical data required to render initial state of the page
-  const criticalData = await loadCriticalData(args);
+// Define the Product type
+type Product = {
+  id: string;
+  title: string;
+  handle: string;
+  priceRange: PriceRange;
+  vendor: string;
+  compareAtPriceRange: PriceRange;
+  images: {
+    nodes: {
+      id: string;
+      url: string;
+      altText: string;
+      width: number;
+      height: number;
+    }[];
+  };
+  variants: {
+    nodes: {
+      id: string;
+      selectedOptions: {
+        name: string;
+        value: string;
+      }[];
+      image: {
+        url: string;
+        altText: string;
+      };
+    }[];
+  };
+};
 
-  return {...deferredData, ...criticalData};
+// Define the RecommendedProductsQuery type
+type RecommendedProductsQuery = {
+  products: {
+    nodes: Product[];
+  };
+};
+
+export const meta: MetaFunction = () => {
+  return [{ title: 'Hydrogen | Home' }];
+};
+
+export async function loader({ context }: LoaderFunctionArgs) {
+  const deferredData = loadDeferredData({ context });
+  const criticalData = await loadCriticalData({ context });
+  return { ...deferredData, ...criticalData };
 }
 
-/**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
- */
-async function loadCriticalData({context}: LoaderFunctionArgs) {
-  const [{collections}] = await Promise.all([
+async function loadCriticalData({ context }: LoaderFunctionArgs) {
+  const [{ collections }] = await Promise.all([
     context.storefront.query(FEATURED_COLLECTION_QUERY),
-    // Add other queries here, so that they are loaded in parallel
   ]);
-
   return {
     featuredCollection: collections.nodes[0],
   };
 }
 
-/**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
- */
-function loadDeferredData({context}: LoaderFunctionArgs) {
+function loadDeferredData({ context }: LoaderFunctionArgs) {
   const recommendedProducts = context.storefront
-    .query(RECOMMENDED_PRODUCTS_QUERY)
+    .query<RecommendedProductsQuery>(RECOMMENDED_PRODUCTS_QUERY)
     .catch((error) => {
-      // Log query errors, but don't throw them so the page can still render
       console.error(error);
       return null;
     });
-
   return {
     recommendedProducts,
   };
@@ -73,10 +107,7 @@ function FeaturedCollection({
   if (!collection) return null;
   const image = collection?.image;
   return (
-    <Link
-      className="featured-collection"
-      to={`/collections/${collection.handle}`}
-    >
+    <Link className="featured-collection" to={`/collections/${collection.handle}`}>
       {image && (
         <div className="featured-collection-image">
           <Image data={image} sizes="100vw" />
@@ -94,28 +125,14 @@ function RecommendedProducts({
 }) {
   return (
     <div className="recommended-products">
-      <h2>Recommended Products</h2>
+      <h2>Custom Feature Product</h2>
       <Suspense fallback={<div>Loading...</div>}>
         <Await resolve={products}>
           {(response) => (
             <div className="recommended-products-grid">
               {response
                 ? response.products.nodes.map((product) => (
-                    <Link
-                      key={product.id}
-                      className="recommended-product"
-                      to={`/products/${product.handle}`}
-                    >
-                      <Image
-                        data={product.images.nodes[0]}
-                        aspectRatio="1/1"
-                        sizes="(min-width: 45em) 20vw, 50vw"
-                      />
-                      <h4>{product.title}</h4>
-                      <small>
-                        <Money data={product.priceRange.minVariantPrice} />
-                      </small>
-                    </Link>
+                    <ProductWithSwatches key={product.id} product={product} />
                   ))
                 : null}
             </div>
@@ -127,6 +144,104 @@ function RecommendedProducts({
   );
 }
 
+function ProductWithSwatches({ product }: { product: Product }) {
+  const [selectedImage, setSelectedImage] = useState(product.images.nodes[0].url);
+  const [selectedAltText, setSelectedAltText] = useState(product.images.nodes[0].altText);
+  const [secondaryImageUrl, setSecondaryImageUrl] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Extract color options from variants
+  const colorOptions = product.variants.nodes
+    .map((variant) => {
+      const colorOption = variant.selectedOptions.find(
+        (option) => option.name === 'Color'
+      );
+      return colorOption
+        ? {
+            value: colorOption.value,
+            image: variant.image.url,
+            altText: variant.image.altText,
+          }
+        : null;
+    })
+    .filter(Boolean) as { value: string; image: string; altText: string }[];
+
+  // Initialize selectedColor to the value of the 0th index swatch
+  const [selectedColor, setSelectedColor] = useState<string | null>(
+    colorOptions[0]?.value || null
+  );
+
+  // Handle color swatch click
+  const handleColorSwatchClick = (imageUrl: string, altText: string, colorValue: string) => {
+    setSelectedImage(imageUrl);
+    setSelectedAltText(altText);
+    setSelectedColor(colorValue); // Update selectedColor to the clicked swatch's value
+    const secondaryUrl = getSecondaryImageUrl(altText);
+    setSecondaryImageUrl(secondaryUrl);
+  };
+
+  // Get the secondary image URL based on the selected image's altText
+  const getSecondaryImageUrl = (altText: string) => {
+    const secondaryImage = product.images.nodes.find(
+      (image) => image.altText === `${altText}-secondary`
+    );
+    return secondaryImage ? secondaryImage.url : selectedImage;
+  };
+
+  // Update the secondary image URL whenever the selected image changes
+  useEffect(() => {
+    const secondaryUrl = getSecondaryImageUrl(selectedAltText);
+    setSecondaryImageUrl(secondaryUrl);
+  }, [selectedAltText]);
+
+  return (
+    <div className="recommended-product">
+      <div
+        className="relative productItem rounded-[10px]"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <span className="absolute z-2 top-[20px] left-[20px] rounded-[25px] border-1 border-[#FF0000] h-[30px] w-[90px] text-center text-[15px] justify-center flex items-center">
+          On Sale
+        </span>
+        <Link className="no-underline itemLink" to={`/products/${product.handle}`}>
+          <Image
+            className="featuredImage"
+            data={{
+              url: isHovered ? secondaryImageUrl : selectedImage,
+              altText: selectedAltText,
+            }}
+            aspectRatio="1/1"
+            sizes="(min-width: 45em) 20vw, 50vw"
+          />
+        </Link>
+      </div>
+      <div className="color-swatches flex gap-2 mt-5">
+        {colorOptions.map((color, index) => (
+          <button
+            key={index}
+            className={`w-6 h-6 swatchItem rounded-full border border-gray-300 ${
+              selectedColor === color.value ? 'active' : ''
+            }`}
+            style={{ backgroundColor: color.value }}
+            onClick={() => handleColorSwatchClick(color.image, color.altText, color.value)}
+            aria-label={color.altText}
+          />
+        ))}
+      </div>
+      <h5 className="text-[14px] mt-[15px]">{product.vendor}</h5>
+      <h4 className="text-[16px] text-[#0A4874]">{product.title}</h4>
+      <small className="flex row-reverse text-[14px] items-center justify-start">
+        <Money className="text-[14px]" data={product.priceRange.minVariantPrice} />
+        {product.compareAtPriceRange.minVariantPrice.amount && (
+          <span className="text-[#FF0000] text-gray-500 ml-2">
+            <Money className="line-through text-[14px] text-[#FF0000]" data={product.compareAtPriceRange.minVariantPrice} />
+          </span>
+        )}
+      </small>
+    </div>
+  );
+}
 const FEATURED_COLLECTION_QUERY = `#graphql
   fragment FeaturedCollection on Collection {
     id
@@ -155,13 +270,28 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
     id
     title
     handle
+    vendor
     priceRange {
       minVariantPrice {
         amount
         currencyCode
       }
+      maxVariantPrice {
+        amount
+        currencyCode
+      }
     }
-    images(first: 1) {
+    compareAtPriceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+      maxVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    images(first: 2) {
       nodes {
         id
         url
@@ -170,8 +300,21 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
         height
       }
     }
+    variants(first: 10) {
+      nodes {
+        id
+        selectedOptions {
+          name
+          value
+        }
+        image {
+          url
+          altText
+        }
+      }
+    }
   }
-  query RecommendedProducts ($country: CountryCode, $language: LanguageCode)
+  query RecommendedProducts($country: CountryCode, $language: LanguageCode)
     @inContext(country: $country, language: $language) {
     products(first: 4, sortKey: UPDATED_AT, reverse: true) {
       nodes {
