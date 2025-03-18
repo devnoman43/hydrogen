@@ -149,7 +149,9 @@ function ProductWithSwatches({ product }: { product: Product }) {
   const [selectedAltText, setSelectedAltText] = useState(product.images.nodes[0].altText);
   const [secondaryImageUrl, setSecondaryImageUrl] = useState('');
   const [isHovered, setIsHovered] = useState(false);
-
+  product.images.nodes.forEach((item) => {
+     console.log(item)
+  })
   // Extract color options from variants
   const colorOptions = product.variants.nodes
     .map((variant) => {
@@ -171,12 +173,23 @@ function ProductWithSwatches({ product }: { product: Product }) {
     colorOptions[0]?.value || null
   );
 
+  // Get all secondary images based on alt text
+  const getAllSecondaryImages = () => {
+    const secondaryImages = product.images.nodes.filter((image) =>
+      image.altText?.endsWith('-secondary')
+    );
+    console.log('All Secondary Images:', secondaryImages); // Debugging
+    return secondaryImages;
+  };
+
   // Handle color swatch click
   const handleColorSwatchClick = (imageUrl: string, altText: string, colorValue: string) => {
+    console.log('Color Swatch Clicked:', { imageUrl, altText, colorValue }); // Debugging
     setSelectedImage(imageUrl);
     setSelectedAltText(altText);
     setSelectedColor(colorValue); // Update selectedColor to the clicked swatch's value
     const secondaryUrl = getSecondaryImageUrl(altText);
+    console.log('Secondary Image URL:', secondaryUrl); // Debugging
     setSecondaryImageUrl(secondaryUrl);
   };
 
@@ -185,24 +198,48 @@ function ProductWithSwatches({ product }: { product: Product }) {
     const secondaryImage = product.images.nodes.find(
       (image) => image.altText === `${altText}-secondary`
     );
-    return secondaryImage ? secondaryImage.url : selectedImage;
+    if (!secondaryImage) {
+      console.warn('Secondary image not found for altText:', `${altText}-secondary`); // Debugging
+    }
+    return secondaryImage ? secondaryImage.url : selectedImage; // Fallback to selectedImage if secondary image not found
   };
 
   // Update the secondary image URL whenever the selected image changes
   useEffect(() => {
+    console.log('Selected Alt Text Changed:', selectedAltText); // Debugging
     const secondaryUrl = getSecondaryImageUrl(selectedAltText);
+    console.log('Updated Secondary Image URL:', secondaryUrl); // Debugging
     setSecondaryImageUrl(secondaryUrl);
   }, [selectedAltText]);
+
+  // Log all secondary images on component mount
+  useEffect(() => {
+    getAllSecondaryImages();
+  }, []);
 
   return (
     <div className="recommended-product">
       <div
         className="relative productItem rounded-[10px]"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => {
+          console.log('Mouse Entered - Hovered:', true); // Debugging
+          console.log('Featured Image Data:', { // Debugging
+            url: selectedImage,
+            altText: selectedAltText,
+          });
+          console.log('Secondary Image Data:', { // Debugging
+            url: secondaryImageUrl,
+            altText: `${selectedAltText}-secondary`,
+          });
+          setIsHovered(true);
+        }}
+        onMouseLeave={() => {
+          console.log('Mouse Left - Hovered:', false); // Debugging
+          setIsHovered(false);
+        }}
       >
-        <span className="absolute z-2 top-[20px] left-[20px] rounded-[25px] border-1 border-[#FF0000] h-[30px] w-[90px] text-center text-[15px] justify-center flex items-center">
-          On Sale
+        <span className="absolute z-2 top-[20px]  font-bold left-[20px] rounded-[25px] border-1 text-[#FF0000] border-[#FF0000] h-[30px] w-[90px] text-center text-[12px] justify-center flex items-center">
+          On Sale!
         </span>
         <Link className="no-underline itemLink" to={`/products/${product.handle}`}>
           <Image
@@ -291,7 +328,7 @@ const RECOMMENDED_PRODUCTS_QUERY = `#graphql
         currencyCode
       }
     }
-    images(first: 2) {
+    images(first: 20) {
       nodes {
         id
         url
