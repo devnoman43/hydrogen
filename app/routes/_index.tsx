@@ -219,6 +219,7 @@ function ProductWithSwatches({ product }: { product: Product }) {
 
   return (
     <div className="recommended-product">
+      <span></span>
       <div
         className="relative productItem rounded-[10px]"
         onMouseEnter={() => {
