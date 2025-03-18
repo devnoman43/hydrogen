@@ -4,14 +4,15 @@
   "sideEffects": false,
   "version": "2025.1.2",
   "type": "module",
-  "scripts": {
-    "build": "shopify hydrogen build --codegen",
-    "dev": "shopify hydrogen dev --codegen",
-    "preview": "shopify hydrogen preview --build",
-    "lint": "eslint --no-error-on-unmatched-pattern .",
-    "typecheck": "tsc --noEmit",
-    "codegen": "shopify hydrogen codegen"
-  },
+ "scripts": {
+  "build": "vite build", 
+  "dev": "shopify hydrogen dev --codegen",
+  "preview": "shopify hydrogen preview --build",
+  "lint": "eslint --no-error-on-unmatched-pattern .",
+  "typecheck": "tsc --noEmit",
+  "codegen": "shopify hydrogen codegen"
+},
+
   "prettier": "@shopify/prettier-config",
   "dependencies": {
     "@remix-run/react": "^2.15.3",

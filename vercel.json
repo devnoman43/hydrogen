@@ -1,0 +1,12 @@
+{
+    "build": {
+      "dist": "dist",
+      "command": "npm run build"
+    },
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/dist/$1"
+      }
+    ]
+  }
