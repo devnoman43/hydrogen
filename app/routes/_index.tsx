@@ -129,7 +129,7 @@ function RecommendedProducts({
       <Suspense fallback={<div>Loading...</div>}>
         <Await resolve={products}>
           {(response) => (
-            <div className="recommended-products-grid">
+            <div className="recommended-products-grid " >
               {response
                 ? response.products.nodes.map((product) => (
                     <ProductWithSwatches key={product.id} product={product} />
@@ -226,10 +226,10 @@ function ProductWithSwatches({ product }: { product: Product }) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <span className="absolute z-2 left-[10px] top-[10px] md:top-[15px]  font-bold md:left-[15px] rounded-[25px] border-1 text-[#FF0000] border-[#FF0000] px-2 py-1 text-center text-[12px] justify-center flex items-center">
+        <span className="absolute badge z-2 left-[10px] top-[10px] md:top-[15px]  font-bold md:left-[15px] rounded-[25px] border-1 text-[#FF0000] border-[#FF0000] text-center text-[12px] justify-center flex items-center">
           On Sale!
         </span>
-        <Link className="no-underline itemLink" to={`/products/${product.handle}`}>
+        <Link className="no-underline cursor-pointer itemLink" to={`/products/${product.handle}`}>
           <Image
             className="featuredImage object-contain"
             data={{
@@ -247,7 +247,7 @@ function ProductWithSwatches({ product }: { product: Product }) {
         {colorOptions.map((color, index) => (
           <button
             key={index}
-            className={`w-6 h-6 swatchItem rounded-full border border-gray-300 ${
+            className={`w-6 h-6 swatchItem cursor-pointer rounded-full border border-gray-300 ${
               selectedColor === color.value ? 'active' : ''
             }`}
             style={{ backgroundColor: color.value }}
@@ -270,7 +270,7 @@ function ProductWithSwatches({ product }: { product: Product }) {
         <Money className="text-[14px] text-[#FF0000]" data={product.priceRange.minVariantPrice} />
         {product.compareAtPriceRange.minVariantPrice.amount && (
           <span className="text-gray-500 mr-2">
-            <Money className="line-through text-[14px] " data={product.compareAtPriceRange.minVariantPrice} />
+            <Money className="line-through text-[14px] text-black" data={product.compareAtPriceRange.minVariantPrice} />
           </span>
         )}
       </small>

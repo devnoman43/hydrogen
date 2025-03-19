@@ -367,7 +367,15 @@ button.reset:hover:not(:has(> *)) {
 .recommended-product img {
   height: auto;
 }
-
+.badge{
+   height: 30px;
+   width: 90px;
+}
+@media screen and (max-width: 750px){
+  .recommended-products-grid {
+    grid-template-columns: 1fr;
+  }
+}
 /*
 * --------------------------------------------------
 * routes/collections._index.tsx
