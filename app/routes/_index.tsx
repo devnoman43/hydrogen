@@ -113,7 +113,7 @@ function FeaturedCollection({
           <Image data={image} sizes="100vw" />
         </div>
       )}
-      <h1>{collection.title}</h1>
+      {/* <h1>{collection.title}</h1> */}
     </Link>
   );
 }
@@ -125,7 +125,7 @@ function RecommendedProducts({
 }) {
   return (
     <div className="recommended-products">
-      <h2>Custom Feature Product</h2>
+   
       <Suspense fallback={<div>Loading...</div>}>
         <Await resolve={products}>
           {(response) => (
@@ -149,9 +149,8 @@ function ProductWithSwatches({ product }: { product: Product }) {
   const [selectedAltText, setSelectedAltText] = useState(product.images.nodes[0].altText);
   const [secondaryImageUrl, setSecondaryImageUrl] = useState('');
   const [isHovered, setIsHovered] = useState(false);
-  product.images.nodes.forEach((item) => {
-     console.log(item)
-  })
+  const [hoveredColor, setHoveredColor] = useState<string | null>(null);
+
   // Extract color options from variants
   const colorOptions = product.variants.nodes
     .map((variant) => {
@@ -173,24 +172,36 @@ function ProductWithSwatches({ product }: { product: Product }) {
     colorOptions[0]?.value || null
   );
 
-  // Get all secondary images based on alt text
-  const getAllSecondaryImages = () => {
-    const secondaryImages = product.images.nodes.filter((image) =>
-      image.altText?.endsWith('-secondary')
-    );
-    console.log('All Secondary Images:', secondaryImages); // Debugging
-    return secondaryImages;
-  };
-
   // Handle color swatch click
   const handleColorSwatchClick = (imageUrl: string, altText: string, colorValue: string) => {
-    console.log('Color Swatch Clicked:', { imageUrl, altText, colorValue }); // Debugging
     setSelectedImage(imageUrl);
     setSelectedAltText(altText);
-    setSelectedColor(colorValue); // Update selectedColor to the clicked swatch's value
+    setSelectedColor(colorValue);
     const secondaryUrl = getSecondaryImageUrl(altText);
-    console.log('Secondary Image URL:', secondaryUrl); // Debugging
     setSecondaryImageUrl(secondaryUrl);
+  };
+
+  // Handle color swatch hover
+  const handleColorSwatchHover = (imageUrl: string, altText: string, colorValue: string) => {
+    setSelectedImage(imageUrl);
+    setSelectedAltText(altText);
+    setHoveredColor(colorValue);
+    const secondaryUrl = getSecondaryImageUrl(altText);
+    setSecondaryImageUrl(secondaryUrl);
+  };
+
+  // Handle color swatch leave
+  const handleColorSwatchLeave = () => {
+    if (selectedColor) {
+      const selectedColorOption = colorOptions.find(option => option.value === selectedColor);
+      if (selectedColorOption) {
+        setSelectedImage(selectedColorOption.image);
+        setSelectedAltText(selectedColorOption.altText);
+        const secondaryUrl = getSecondaryImageUrl(selectedColorOption.altText);
+        setSecondaryImageUrl(secondaryUrl);
+      }
+    }
+    setHoveredColor(null);
   };
 
   // Get the secondary image URL based on the selected image's altText
@@ -198,53 +209,29 @@ function ProductWithSwatches({ product }: { product: Product }) {
     const secondaryImage = product.images.nodes.find(
       (image) => image.altText === `${altText}-secondary`
     );
-    if (!secondaryImage) {
-      console.warn('Secondary image not found for altText:', `${altText}-secondary`); // Debugging
-    }
-    return secondaryImage ? secondaryImage.url : selectedImage; // Fallback to selectedImage if secondary image not found
+    return secondaryImage ? secondaryImage.url : selectedImage;
   };
 
   // Update the secondary image URL whenever the selected image changes
   useEffect(() => {
-    console.log('Selected Alt Text Changed:', selectedAltText); // Debugging
     const secondaryUrl = getSecondaryImageUrl(selectedAltText);
-    console.log('Updated Secondary Image URL:', secondaryUrl); // Debugging
     setSecondaryImageUrl(secondaryUrl);
   }, [selectedAltText]);
-
-  // Log all secondary images on component mount
-  useEffect(() => {
-    getAllSecondaryImages();
-  }, []);
 
   return (
     <div className="recommended-product">
       <span></span>
       <div
         className="relative productItem rounded-[10px]"
-        onMouseEnter={() => {
-          console.log('Mouse Entered - Hovered:', true); // Debugging
-          console.log('Featured Image Data:', { // Debugging
-            url: selectedImage,
-            altText: selectedAltText,
-          });
-          console.log('Secondary Image Data:', { // Debugging
-            url: secondaryImageUrl,
-            altText: `${selectedAltText}-secondary`,
-          });
-          setIsHovered(true);
-        }}
-        onMouseLeave={() => {
-          console.log('Mouse Left - Hovered:', false); // Debugging
-          setIsHovered(false);
-        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <span className="absolute z-2 top-[20px]  font-bold left-[20px] rounded-[25px] border-1 text-[#FF0000] border-[#FF0000] h-[30px] w-[90px] text-center text-[12px] justify-center flex items-center">
+        <span className="absolute z-2 left-[10px] top-[10px] md:top-[15px]  font-bold md:left-[15px] rounded-[25px] border-1 text-[#FF0000] border-[#FF0000] px-2 py-1 text-center text-[12px] justify-center flex items-center">
           On Sale!
         </span>
         <Link className="no-underline itemLink" to={`/products/${product.handle}`}>
           <Image
-            className="featuredImage"
+            className="featuredImage object-contain"
             data={{
               url: isHovered ? secondaryImageUrl : selectedImage,
               altText: selectedAltText,
@@ -254,7 +241,9 @@ function ProductWithSwatches({ product }: { product: Product }) {
           />
         </Link>
       </div>
-      <div className="color-swatches flex gap-2 mt-5">
+      <div style={{
+           margin: '14px 0px'
+      }} className="color-swatches flex gap-2 ">
         {colorOptions.map((color, index) => (
           <button
             key={index}
@@ -263,17 +252,25 @@ function ProductWithSwatches({ product }: { product: Product }) {
             }`}
             style={{ backgroundColor: color.value }}
             onClick={() => handleColorSwatchClick(color.image, color.altText, color.value)}
+            onMouseEnter={() => handleColorSwatchHover(color.image, color.altText, color.value)}
+            onMouseLeave={handleColorSwatchLeave}
             aria-label={color.altText}
           />
         ))}
       </div>
-      <h5 className="text-[14px] mt-[15px]">{product.vendor}</h5>
-      <h4 className="text-[16px] text-[#0A4874]">{product.title}</h4>
-      <small className="flex row-reverse text-[14px] items-center justify-start">
-        <Money className="text-[14px]" data={product.priceRange.minVariantPrice} />
+      <h5  style={{
+          margin: '0px 0px 0px 0px'
+      }} className="text-[14px] mb-[0px] p-[0px]">{product.vendor}</h5>
+      <h4  style={{
+        margin: '2px 0px'
+      }} className="text-[16px] m-0 p-0 font-bold text-[#0A4874]">{product.title}</h4>
+      <small style={{
+        flexDirection: 'row-reverse'
+      }} className="flex  text-[14px] items-center justify-end">
+        <Money className="text-[14px] text-[#FF0000]" data={product.priceRange.minVariantPrice} />
         {product.compareAtPriceRange.minVariantPrice.amount && (
-          <span className="text-[#FF0000] text-gray-500 ml-2">
-            <Money className="line-through text-[14px] text-[#FF0000]" data={product.compareAtPriceRange.minVariantPrice} />
+          <span className="text-gray-500 mr-2">
+            <Money className="line-through text-[14px] " data={product.compareAtPriceRange.minVariantPrice} />
           </span>
         )}
       </small>

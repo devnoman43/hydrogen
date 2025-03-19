@@ -7,7 +7,9 @@
   --color-dark: #000;
   --color-light: #fff;
 }
-
+body{
+  font-family: "Roboto", sans-serif;
+}
 img {
   border-radius: 4px;
 }
@@ -515,4 +517,8 @@ button.reset:hover:not(:has(> *)) {
 .productItem {
   box-shadow: rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px;
   overflow: hidden;
+}
+.productItem h5{
+  margin: 0px;
+  padding: 0px;
 }
